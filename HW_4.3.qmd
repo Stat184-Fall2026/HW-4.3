@@ -1,0 +1,647 @@
+---
+title: "HW #4.3: Reproducible Data Analysis"
+author: "Katherine Connelly"
+date: "November 19, 2026"
+format: pdf
+editor: visual
+execute:
+  echo: false
+  warning: false
+  message: false 
+---
+
+# 1. Diamonds Table of Statistics 
+
+```{r}
+library(ggplot2)
+library(tidyverse)
+library(knitr)
+library(kableExtra)
+
+data(diamonds)
+
+newDiamonds <- diamonds |>
+  filter(x != 0, y != 0, z != 0) |>
+  select(cut, x, y, z)
+
+statVals <- newDiamonds |>
+  pivot_longer(
+    cols = c(x, y, z),
+    names_to = "Variable",
+    values_to = "Value"
+  ) |>
+  group_by(cut, Variable) |>
+  summarize(
+    Count = length(Value),
+    Min = min(Value),
+    Q1 = quantile(Value, 0.25),
+    Median = median(Value),
+    Q3 = quantile(Value, 0.75),
+    Max = max(Value),
+    MAD = mad(Value),
+    Mean = mean(Value),
+    SD = sd(Value),
+    .groups = "drop"
+  ) |>
+  mutate(
+    across(
+      where(is.numeric),
+      ~round(.x, 2)
+    )
+  )
+
+lengthStats <- statVals |>
+  filter(Variable == "x") |>
+  select(-Variable)
+
+widthStats <- statVals |>
+  filter(Variable == "y") |>
+  select(-Variable)
+
+depthStats <- statVals |>
+  filter(Variable == "z") |>
+  select(-Variable)
+```
+
+## 1.1 Length 
+
+```{r}
+#| label: tbl-length
+#| tbl-cap: "Diamond Length by Cut Quality"
+
+kable(
+  lengthStats,
+  align = "c"
+) |>
+  kable_classic(
+    lightable_options = "striped",
+    font_size = 12
+  )
+```
+
+@tbl-length shows the length of diamonds across the five different cut qualities. Fair diamonds had the highest average length at 6.25, while Ideal diamonds had the lowest at 5.51. The median lengths were also fairly similar across all five cuts. Premium diamonds had the highest MAD at 1.42, meaning their lengths had the most variation, while Fair diamonds had the lowest at 0.82. Overall, diamond lengths were relatively similar across the different cut qualities.
+
+## 1.2 Width 
+
+```{r}
+#| label: tbl-width
+#| tbl-cap: "Diamond Width by Cut Quality"
+
+kable(
+  widthStats,
+  align = "c"
+) |>
+  kable_classic(
+    lightable_options = "striped",
+    font_size = 12
+  )
+```
+
+@tbl-width shows the width of diamonds across the five different cut qualities. Fair diamonds had the highest average width at 6.19, while Ideal diamonds had the lowest at 5.52. The median widths were also fairly similar across all five cuts. Premium diamonds had the highest MAD at 1.41, meaning their widths had the most variation, while Fair diamonds had the lowest at 0.79. Overall, diamond widths were relatively similar across the different cut qualities.
+
+## 1.3 Depth 
+
+```{r}
+#| label: tbl-depth
+#| tbl-cap: "Diamond Depth by Cut Quality"
+
+kable(
+  depthStats,
+  align = "c"
+) |>
+  kable_classic(
+    lightable_options = "striped",
+    font_size = 12
+  )
+```
+
+@tbl-depth shows the depth of diamonds across the five different cut qualities. Fair diamonds had the highest average depth at 3.99, while Ideal diamonds had the lowest at 3.40. The median depths were also fairly similar across all five cuts. Premium diamonds had the highest MAD at 0.86, meaning their depths had the most variation, while Fair diamonds had the lowest at 0.52. Overall, diamond depth was relatively similar across the different cut qualities.
+
+# 2. Big Ten Academic Alliance 
+
+```{r}
+library(tidyverse)
+
+team_box <- read_csv(
+  "/Users/katherineconnelly/Downloads/team_box.csv",
+  show_col_types = FALSE)
+
+three_point_data <- team_box |>
+  select(
+    game_id,
+    team_display_name,
+    team_home_away,
+    three_point_field_goals_made,
+    three_point_field_goals_attempted
+  ) |>
+  filter(
+    team_home_away == "home" | team_home_away == "away"
+  )
+
+three_point_summary <- three_point_data |>
+  group_by(team_home_away) |>
+  summarise(
+    average_three_pointers = mean(three_point_field_goals_made),
+    average_attempted = mean(three_point_field_goals_attempted)
+  )
+
+three_point_plot <- three_point_summary |>
+  pivot_longer(
+    cols = c(average_three_pointers, average_attempted),
+    names_to = "shot_type",
+    values_to = "average_shots"
+  )
+```
+```{r}
+#| label: fig-btaa
+#| fig-cap: "Average Number of Three Point Shots Made and Attempted by Home and Away Teams"
+#| fig-alt: "Bar chart showing NCAA women’s basketball teams attempt about 18.8 three pointers away and 19.1 at home, making about 5.7 away and 6.2 at home."
+#| fig-width: 7
+#| fig-align: center
+#| fig-pos: "H"
+
+three_point_plot |>
+  ggplot(
+    mapping = aes(
+      x = team_home_away,
+      y = average_shots,
+      fill = shot_type
+    )
+  ) +
+  geom_col(position = "dodge") +
+  labs(
+    title = "NCAA Women's Basketball Home vs. Away Three Pointers",
+    subtitle = "Comparing the average number of three-point shots made and attempted",
+    x = "Game Location",
+    y = "Average Number of Three Point Shots",
+    fill = "Shot Type",
+    caption = "Source: NCAA Women's Basketball Data"
+  ) +
+  scale_x_discrete(
+    labels = c("away" = "Away", "home" = "Home")
+  ) +
+  scale_fill_discrete(
+    labels = c(
+      "average_three_pointers" = "Shots Made",
+      "average_attempted" = "Shots Attempted"
+    )
+  ) +
+  theme_bw()
+```
+
+As shown in  @fig-btaa, the graph compares the average number of three-point shots made and attempted by NCAA women's basketball teams when playing at home and away. Teams attempted an average of about 18.8 three-pointers away and 19.1 at home. Teams also made more three-pointers at home, averaging about 6.2 compared to 5.7 away. Overall, teams attempted and made slightly more three-point shots when playing at home.
+
+# 3. Monte Carlo Numerical Integration 
+
+```{r}
+# Monte Carlo Simulation Function ----
+## Coder: Katherine Connelly
+## Create a function that runs a Monte Carlo simulation using a user-specified 
+## number of points
+
+monte_carlo <- function(n, x_min, x_max, y_min, y_max) {
+
+  # Step 2: Generate Random Coordinates ----
+  ## Generate random x and y values within the specified bounds
+
+  x <- runif(n, min = x_min, max = x_max)
+  y <- runif(n, min = y_min, max = y_max)
+
+  # Step 3: Create Data Frame ----
+  ## Put x and y coordinates into separate columns 
+
+  results <- data.frame(
+    x = x,
+    y = y
+  )
+
+  # Step 4: Return Results ----
+  ## Return the data frame
+
+  return(results) 
+}
+```
+```{r}
+# Generate Random Samples ----
+
+sim10 <- monte_carlo(10, 0, 1, 0, 1.5)
+sim100 <- monte_carlo(100, 0, 1, 0, 1.5)
+sim1000 <- monte_carlo(1000, 0, 1, 0, 1.5)
+sim10000 <- monte_carlo(10000, 0, 1, 0, 1.5)
+
+# Determine Points Below the Curve ----
+
+sim10$below <- sim10$y <= dbeta(sim10$x, 2, 2)
+sim100$below <- sim100$y <= dbeta(sim100$x, 2, 2)
+sim1000$below <- sim1000$y <= dbeta(sim1000$x, 2, 2)
+sim10000$below <- sim10000$y <= dbeta(sim10000$x, 2, 2)
+```
+```{r}
+#| label: fig-monteCarlo
+#| fig-cap: "Monte Carlo Numerical Integration Using Different Sample Sizes"
+#| fig-subcap:
+#|   - "10 Random Points"
+#|   - "100 Random Points"
+#|   - "1,000 Random Points"
+#|   - "10,000 Random Points"
+#| fig-alt:
+#|   - "10 random points compared to the Beta distribution curve."
+#|   - "100 random points compared to the Beta distribution curve."
+#|   - "1,000 random points compared to the Beta distribution curve."
+#|   - "10,000 random points compared to the Beta distribution curve."
+#| fig-pos: "H" 
+#| layout-ncol: 2
+
+library(ggplot2)
+
+# First Plot: 10 Points ----
+
+ggplot(data = sim10, mapping = aes(x = x, y = y)) +
+  geom_point(aes(color = below)) +
+  stat_function(
+    fun = function(x) dbeta(x, 2, 2),
+    xlim = c(0, 1),
+    n = 500
+  ) +
+  labs(x = "X", y = "Y") +
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1.5))
+
+# Second Plot: 100 Points ----
+ggplot(data = sim100, mapping = aes(x = x, y = y)) +
+  geom_point(aes(color = below)) +
+  stat_function(fun = function(x) dbeta(x, 2, 2)) +
+  labs(x = "X", y = "Y") +
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1.5))
+
+# Third Plot: 1,000 Points ----
+ggplot(data = sim1000, mapping = aes(x = x, y = y)) +
+  geom_point(aes(color = below)) +
+  stat_function(fun = function(x) dbeta(x, 2, 2)) +
+  labs(x = "X", y = "Y") +
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1.5))
+
+# Fourth Plot: 10,000 Points ----
+ggplot(data = sim10000, mapping = aes(x = x, y = y)) +
+  geom_point(aes(color = below)) +
+  stat_function(fun = function(x) dbeta(x, 2, 2)) +
+  labs(x = "X", y = "Y") +
+  coord_cartesian(xlim = c(0, 1), ylim = c(0, 1.5))
+```
+```{r}
+# Calculate Monte Carlo Estimates ----
+
+rectangle_area <- 1.5
+
+estimate10 <- rectangle_area * mean(sim10$below)
+estimate100 <- rectangle_area * mean(sim100$below)
+estimate1000 <- rectangle_area * mean(sim1000$below)
+estimate10000 <- rectangle_area * mean(sim10000$below)
+```
+
+@fig-monteCarlo shows how the Monte Carlo simulation changes as the number of randomly generated points increases. The four plots use 10, 100, 1,000, and 10,000 points within the same rectangular area. Points below or on the curve are shown in teal, while points above the curve are shown in red. With only 10 points, the distribution is sparse and does not clearly represent the area under the curve. As the number of points increases, the points become more evenly distributed and begin to show the shape of the curve more clearly. By 10,000 points, the area below the curve is much more densely filled, making it easier to see how the simulation estimates the area. Overall, increasing the number of points improves the visual representation and accuracy of the Monte Carlo approximation.
+
+# 4. Planning and Prompting GenAI Tools
+
+## 4.1. Plan
+
+**Goals:**
+
+- Tidy the original Calcium dataset so it is easier to work with.
+- Compare the calcium measurements between the null group and the diet/exercise group.
+- Look at how calcium changes over the four years.
+- Make a graph showing how the two groups change over time.
+
+**Needs:**
+
+- Original calcium.csv file.
+- R, tidyverse, and ggplot2 packages.
+- A subject ID to identify each woman.
+- A treatment group variable to separate the null group and diet/exercise group.
+- A year variable to show when each measurement was taken.
+- A calcium measurement variable to store the measurements.
+
+**Steps:** 
+
+1. Import calcium.csv into R without editing the original file.
+2. Look at how the data is set up right now and figure out why it isn’t tidy.
+3. Switch the data from wide to long format so each row is one woman’s measurement at one point in time.
+4. Make a subject ID for each of the 31 women.
+5. Make a treatment group variable showing who is in the null group and who is in the diet/exercise group.
+6. Make a year variable for Initial, Year 1, Year 2, and Year 3.
+7. Check that the calcium measurements are numeric and that all the variables are set up correctly.
+8. Check for missing values and make sure every available measurement made it into the new dataset.
+9. Calculate the average calcium measurement for each group at each time point.
+10. Build a line graph comparing the average calcium measurements of the two groups over time.
+11. Give each treatment group its own color, and add a title, axis labels, and a legend.
+12. Look over the final dataset and graph to make sure everything is correct and easy to understand
+
+## 4.2. Plan Imformed prompt
+
+**Prompt:**
+
+Heres the calcium.csv dataset, follow my plan and make an R code to tidy and make a visual of the data.
+
+**Goals:**
+
+- Tidy the original Calcium dataset so it is easier to work with.
+- Compare the calcium measurements between the null group and the diet/exercise group.
+- Look at how calcium changes over the four years.
+- Make a graph showing how the two groups change over time.
+
+**Needs:**
+
+- Original calcium.csv file.
+- R, tidyverse, and ggplot2 packages.
+- A subject ID to identify each woman.
+- A treatment group variable to separate the null group and diet/exercise group.
+- A year variable to show when each measurement was taken.
+- A calcium measurement variable to store the measurements.
+
+**Steps:** 
+
+1. Import calcium.csv into R without editing the original file.
+2. Look at how the data is set up right now and figure out why it isn’t tidy.
+3. Switch the data from wide to long format so each row is one woman’s measurement at one point in time.
+4. Make a subject ID for each of the 31 women.
+5. Make a treatment group variable showing who is in the null group and who is in the diet/exercise group.
+6. Make a year variable for Initial, Year 1, Year 2, and Year 3.
+7. Check that the calcium measurements are numeric and that all the variables are set up correctly.
+8. Check for missing values and make sure every available measurement made it into the new dataset.
+9. Calculate the average calcium measurement for each group at each time point.
+10. Build a line graph comparing the average calcium measurements of the two groups over time.
+11. Give each treatment group its own color, and add a title, axis labels, and a legend.
+12. Look over the final dataset and graph to make sure everything is correct and easy to understand
+
+```{r}
+library(tidyverse)
+
+# Import the original calcium dataset
+calcium <- read.csv("/Users/katherineconnelly/Downloads/calcium.csv")
+
+# Separate the null group
+null_data <- calcium[1:15, 1:4]
+
+# Separate the diet and exercise group
+diet_data <- calcium[, 5:8]
+
+# Rename the measurement columns
+names(null_data) <- c("y0", "y1", "y2", "y3")
+names(diet_data) <- c("y0", "y1", "y2", "y3")
+
+# Add subject IDs and treatment groups
+null_data <- null_data |>
+  mutate(
+    subject = paste0("N", 1:15),
+    group = "Null"
+  )
+
+diet_data <- diet_data |>
+  mutate(
+    subject = paste0("D", 1:16),
+    group = "Diet/Exercise"
+  )
+
+# Combine the two groups
+calcium_combined <- bind_rows(null_data, diet_data)
+
+# Change the data from wide format to long format
+calcium_tidy <- calcium_combined |>
+  pivot_longer(
+    cols = c(y0, y1, y2, y3),
+    names_to = "year",
+    values_to = "calcium"
+  ) |>
+  drop_na(calcium) |>
+  mutate(
+    year = recode(
+      year,
+      y0 = "Initial",
+      y1 = "Year 1",
+      y2 = "Year 2",
+      y3 = "Year 3"
+    ),
+    year = factor(
+      year,
+      levels = c("Initial", "Year 1", "Year 2", "Year 3")
+    )
+  )
+
+# Calculate the average calcium measurement
+calcium_summary <- calcium_tidy |>
+  group_by(group, year) |>
+  summarize(
+    average_calcium = mean(calcium),
+    .groups = "drop"
+  )
+```
+```{r}
+#| label: fig-calcium
+#| fig-cap: "Average Calcium Measurements Over Four Years"
+
+ggplot(
+  data = calcium_summary,
+  mapping = aes(
+    x = year,
+    y = average_calcium,
+    color = group,
+    group = group
+  )
+) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "Average Calcium Measurements Over Four Years",
+    x = "Year",
+    y = "Average Calcium Measurement",
+    color = "Treatment Group"
+  )
+```
+
+As shown in @fig-calcium, the graph compares the average calcium measurements for the null group and the diet/exercise group over four years. Both groups show an increase or slight change during the first two years, followed by a large decrease in Year 3. The graph makes it easier to compare the two groups and see how their calcium measurements changed over time.
+
+## 4.3. Generic Response 
+ 
+**Prompt:**
+Create a data visualization for these data. Calcium.csv
+
+**Response:**
+I created a visualization showing the average value of each column in your dataset.
+
+- Each point represents the mean (average) of one column (y0, y1, y2, y3, etc.).
+- You can quickly compare which variables tend to have higher or lower values overall.
+- For example, some columns cluster around 70–73, while others drop closer to 65.
+
+If you want something more insightful, I can also create:
+
+- Boxplots (to show spread and outliers)
+- Time series plots (if rows represent time/order)
+- Correlation heatmaps
+- Side-by-side comparisons (e.g., y0 vs y0.1)
+
+```{r}
+#| label: fig-generic
+#| fig-cap: "Average Value per Column in the Calcium Dataset"
+
+knitr::include_graphics(
+  path.expand("/Users/katherineconnelly/Desktop/chatgptPlot.png"))
+```
+
+## 4.4. Comparing Results 
+
+The plan-informed and generic ChatGPT responses created two different graphs using the same calcium dataset. The plan-informed response followed my goals by organizing the data, separating the null and diet/exercise groups, and comparing their average calcium measurements over the four years. Its line graph made it easier to see how the two groups changed over time.
+
+The generic response showed the average value of each column, but it did not separate the treatment groups or show how the measurements changed over the years. It also did not explain what the columns represented in the study.
+
+The biggest difference was that my plan gave ChatGPT more information about the data and what I wanted to compare. The generic prompt was very broad, so the graph was less specific. This activity showed me that giving AI clear instructions can make a big difference in the results. I also learned that it is important to check the results instead of assuming everything AI creates is correct.
+
+# 5. Reflection 
+
+Throughout this semester, I've learned a lot about using R to organize, analyze, and visualize data. At the beginning, I was not familiar with coding, but I have become more comfortable writing code, using different functions, and troubleshooting errors.
+
+I learned how to work with datasets by filtering and selecting variables, calculating summary statistics, and analyzing relationships between variables. I also learned about data wrangling and tidying, including how to clean, organize, and restructure datasets to make them easier to work with and analyze. I gained experience creating graphs using ggplot2, including histograms, scatterplots, and learned how visualizations can help identify patterns in data.
+
+One assignment that helped me learn was the Monte Carlo simulation. I created a function to generate random coordinates and estimate an integral using different sample sizes. This helped me understand how functions work and how increasing the number of points can affect the accuracy of results.
+
+I also learned how to use Quarto to combine code, graphs, tables, and written explanations into organized documents. Overall, I feel much more confident using R and understand better how coding can be used to solve problems and analyze real data. I have also improved at working through errors and figuring out how different parts of my code work together.
+
+{{< pagebreak >}}
+
+## 5.1. GenAI Usage 
+
+**Usage 1**
+
+- GenAI Tool: ChatGPT (OpenAI)
+- Model: GPT-6
+- Date of Usage: Nov. 19, 2026
+- Purpose: Used ChatGPT to help write R code to tody and create a visual from the calcium csv. 
+
+**Prompt:**
+
+Heres the calcium.csv dataset, follow my plan and make an R code to tidy and make a visual of the data.
+
+**Goals:**
+
+- Tidy the original Calcium dataset so it is easier to work with.
+- Compare the calcium measurements between the null group and the diet/exercise group.
+- Look at how calcium changes over the four years.
+- Make a graph showing how the two groups change over time.
+
+**Needs:**
+
+- Original calcium.csv file.
+- R, tidyverse, and ggplot2 packages.
+- A subject ID to identify each woman.
+- A treatment group variable to separate the null group and diet/exercise group.
+- A year variable to show when each measurement was taken.
+- A calcium measurement variable to store the measurements.
+
+**Steps:** 
+
+1. Import calcium.csv into R without editing the original file.
+2. Look at how the data is set up right now and figure out why it isn’t tidy.
+3. Switch the data from wide to long format so each row is one woman’s measurement at one point in time.
+4. Make a subject ID for each of the 31 women.
+5. Make a treatment group variable showing who is in the null group and who is in the diet/exercise group.
+6. Make a year variable for Initial, Year 1, Year 2, and Year 3.
+7. Check that the calcium measurements are numeric and that all the variables are set up correctly.
+8. Check for missing values and make sure every available measurement made it into the new dataset.
+9. Calculate the average calcium measurement for each group at each time point.
+10. Build a line graph comparing the average calcium measurements of the two groups over time.
+11. Give each treatment group its own color, and add a title, axis labels, and a legend.
+12. Look over the final dataset and graph to make sure everything is correct and easy to understand.
+
+**AI-Generated Response**
+
+This code follows your plan and uses the original file without changing it. Make sure calcium.csv is in the same folder as your Quarto document.
+
+library(tidyverse)
+
+Import the original calcium dataset
+calcium <- read.csv("/Users/katherineconnelly/Downloads/calcium.csv")
+
+Separate the null group
+null_data <- calcium[1:15, 1:4]
+
+Separate the diet and exercise group
+diet_data <- calcium[, 5:8]
+
+Rename the measurement columns
+names(null_data) <- c("y0", "y1", "y2", "y3")
+names(diet_data) <- c("y0", "y1", "y2", "y3")
+
+Add subject IDs and treatment groups
+null_data <- null_data |>
+  mutate(
+    subject = paste0("N", 1:15),
+    group = "Null"
+  )
+
+diet_data <- diet_data |>
+  mutate(
+    subject = paste0("D", 1:16),
+    group = "Diet/Exercise"
+  )
+
+Combine the two groups
+calcium_combined <- bind_rows(null_data, diet_data)
+
+Change the data from wide format to long format
+calcium_tidy <- calcium_combined |>
+  pivot_longer(
+    cols = c(y0, y1, y2, y3),
+    names_to = "year",
+    values_to = "calcium"
+  ) |>
+  drop_na(calcium) |>
+  mutate(
+    year = recode(
+      year,
+      y0 = "Initial",
+      y1 = "Year 1",
+      y2 = "Year 2",
+      y3 = "Year 3"
+    ),
+    year = factor(
+      year,
+      levels = c("Initial", "Year 1", "Year 2", "Year 3")
+    )
+  )
+
+Calculate the average calcium measurement
+calcium_summary <- calcium_tidy |>
+  group_by(group, year) |>
+  summarize(
+    average_calcium = mean(calcium),
+    .groups = "drop"
+  )
+
+#| label: fig-calcium
+#| fig-cap: "Average Calcium Measurements Over Four Years"
+
+ggplot(
+  data = calcium_summary,
+  mapping = aes(
+    x = year,
+    y = average_calcium,
+    color = group,
+    group = group
+  )
+) +
+  geom_line() +
+  geom_point() +
+  labs(
+    title = "Average Calcium Measurements Over Four Years",
+    x = "Year",
+    y = "Average Calcium Measurement",
+    color = "Treatment Group"
+
+{{< pagebreak >}} 
+
+## 5.2. Code Appendix
+```{r}
+#| label: codeAppend
+#| ref-label: !expr knitr::all_labels()
+#| echo: true
+#| eval: false
+
+```
